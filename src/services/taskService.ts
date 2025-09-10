@@ -1,109 +1,86 @@
-import { apiClient } from './apiClient';
+import { supabase } from './supabaseClient';
 import { Task, TaskFormData } from '../types/task.types';
 import { UI_MESSAGES } from '../config/constants';
 
 class TaskService {
-  private readonly endpoints = {
-    tasks: '/tasks',
-    health: '/health',
-  } as const;
+  private readonly TABLE_NAME = 'tasks';
 
   async getAllTasks(): Promise<Task[]> {
-    try {
-      const response = await apiClient.get<Task[]>(this.endpoints.tasks);
-      return response.data || [];
-    } catch (error) {
+    const { data, error } = await supabase
+      .from(this.TABLE_NAME)
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
       console.error('Failed to fetch tasks:', error);
       throw new Error(UI_MESSAGES.ERROR.NETWORK_ERROR);
     }
+
+    return data || [];
   }
 
   async createTask(taskData: TaskFormData): Promise<Task> {
-    try {
-      const response = await apiClient.post<Task>(this.endpoints.tasks, taskData);
-      
-      if (!response.data) {
-        throw new Error(UI_MESSAGES.ERROR.SERVER_ERROR);
-      }
-      
-      return response.data;
-    } catch (error) {
+    const { data, error } = await supabase
+      .from(this.TABLE_NAME)
+      .insert([taskData])
+      .select()
+      .single();
+
+    if (error) {
       console.error('Failed to create task:', error);
-      
-      if (error instanceof Error && error.message.includes('400')) {
-        throw new Error(UI_MESSAGES.ERROR.VALIDATION_ERROR);
-      }
-      
       throw new Error(UI_MESSAGES.ERROR.SERVER_ERROR);
     }
+
+    return data;
   }
 
   async updateTask(taskId: string, updates: Partial<Task>): Promise<Task> {
-    try {
-      const response = await apiClient.put<Task>(`${this.endpoints.tasks}/${taskId}`, updates);
-      
-      if (!response.data) {
-        throw new Error(UI_MESSAGES.ERROR.SERVER_ERROR);
-      }
-      
-      return response.data;
-    } catch (error) {
+    const { data, error } = await supabase
+      .from(this.TABLE_NAME)
+      .update(updates)
+      .eq('id', taskId)
+      .select()
+      .single();
+
+    if (error) {
       console.error('Failed to update task:', error);
-      
-      if (error instanceof Error && error.message.includes('404')) {
+      if (error.code === 'PGRST116') { // PostgREST error for "Not a single row was returned"
         throw new Error(UI_MESSAGES.ERROR.TASK_NOT_FOUND);
       }
-      
-      if (error instanceof Error && error.message.includes('400')) {
-        throw new Error(UI_MESSAGES.ERROR.VALIDATION_ERROR);
-      }
-      
       throw new Error(UI_MESSAGES.ERROR.SERVER_ERROR);
     }
+
+    return data;
   }
 
   async deleteTask(taskId: string): Promise<void> {
-    try {
-      await apiClient.delete(`${this.endpoints.tasks}/${taskId}`);
-    } catch (error) {
+    const { error } = await supabase
+      .from(this.TABLE_NAME)
+      .delete()
+      .eq('id', taskId);
+
+    if (error) {
       console.error('Failed to delete task:', error);
-      
-      if (error instanceof Error && error.message.includes('404')) {
-        throw new Error(UI_MESSAGES.ERROR.TASK_NOT_FOUND);
-      }
-      
       throw new Error(UI_MESSAGES.ERROR.SERVER_ERROR);
     }
   }
 
-  async toggleTaskCompletion(taskId: string): Promise<Task> {
-    try {
-      const response = await apiClient.patch<Task>(`${this.endpoints.tasks}/${taskId}/toggle`);
-      
-      if (!response.data) {
-        throw new Error(UI_MESSAGES.ERROR.SERVER_ERROR);
-      }
-      
-      return response.data;
-    } catch (error) {
+  async toggleTaskCompletion(taskId: string, currentStatus: boolean): Promise<Task> {
+    const { data, error } = await supabase
+      .from(this.TABLE_NAME)
+      .update({ completed: !currentStatus })
+      .eq('id', taskId)
+      .select()
+      .single();
+
+    if (error) {
       console.error('Failed to toggle task completion:', error);
-      
-      if (error instanceof Error && error.message.includes('404')) {
+      if (error.code === 'PGRST116') {
         throw new Error(UI_MESSAGES.ERROR.TASK_NOT_FOUND);
       }
-      
       throw new Error(UI_MESSAGES.ERROR.SERVER_ERROR);
     }
-  }
-
-  async checkHealth(): Promise<boolean> {
-    try {
-      const response = await apiClient.get(this.endpoints.health);
-      return response.success;
-    } catch (error) {
-      console.error('Health check failed:', error);
-      return false;
-    }
+    return data;
   }
 }
 

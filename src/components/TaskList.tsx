@@ -6,10 +6,11 @@ import { sortTasks } from '../utils/taskUtils';
 
 interface TaskListProps {
   tasks: Task[];
-  onToggleComplete: (id: string) => void;
+  onToggleComplete: (task: Task) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   emptyMessage?: string;
+  isLoading: boolean;
 }
 
 const TaskList: React.FC<TaskListProps> = React.memo(({
@@ -78,9 +79,9 @@ const TaskList: React.FC<TaskListProps> = React.memo(({
         <Box key={task.id} role="listitem">
           <TaskCard
             task={task}
-            onToggleComplete={onToggleComplete}
-            onEdit={onEdit}
-            onDelete={onDelete}
+            onToggleComplete={() => onToggleComplete(task)}
+            onEdit={() => onEdit(task)}
+            onDelete={() => onDelete(task.id)}
           />
         </Box>
       ))}

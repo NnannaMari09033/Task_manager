@@ -12,7 +12,7 @@ const initialState: TaskState = {
   error: null
 };
 
-// Async thunks for API operations
+// Async thunks for Supabase operations
 export const fetchTasks = createAsyncThunk(
   'tasks/fetchTasks',
   async (_, { rejectWithValue }) => {
@@ -41,7 +41,7 @@ export const createTask = createAsyncThunk(
 
 export const updateTask = createAsyncThunk(
   'tasks/updateTask',
-  async ({ id, updates }: { id: string; updates: Partial<Task> }, { rejectWithValue }) => {
+  async ({ id, updates }: { id: string; updates: Partial<TaskFormData> }, { rejectWithValue }) => {
     try {
       const updatedTask = await taskService.updateTask(id, updates);
       return updatedTask;
@@ -67,9 +67,9 @@ export const deleteTask = createAsyncThunk(
 
 export const toggleTaskCompletion = createAsyncThunk(
   'tasks/toggleTaskCompletion',
-  async (id: string, { rejectWithValue }) => {
+  async ({ id, completed }: { id: string; completed: boolean }, { rejectWithValue }) => {
     try {
-      const updatedTask = await taskService.toggleTaskCompletion(id);
+      const updatedTask = await taskService.toggleTaskCompletion(id, completed);
       return updatedTask;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to toggle task completion';
@@ -97,89 +97,81 @@ const taskSlice = createSlice({
     resetTaskState: () => initialState
   },
   extraReducers: (builder) => {
-    // Fetch tasks
     builder
+      // Fetch tasks
       .addCase(fetchTasks.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchTasks.fulfilled, (state, action) => {
+      .addCase(fetchTasks.fulfilled, (state, action: PayloadAction<Task[]>) => {
         state.loading = false;
         state.tasks = action.payload;
-        state.error = null;
       })
       .addCase(fetchTasks.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
 
-    // Create task
-    builder
+      // Create task
       .addCase(createTask.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(createTask.fulfilled, (state, action) => {
+      .addCase(createTask.fulfilled, (state, action: PayloadAction<Task>) => {
         state.loading = false;
-        state.tasks.push(action.payload);
-        state.error = null;
+        state.tasks.unshift(action.payload);
       })
       .addCase(createTask.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
 
-    // Update task
-    builder
+      // Update task
       .addCase(updateTask.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(updateTask.fulfilled, (state, action) => {
+      .addCase(updateTask.fulfilled, (state, action: PayloadAction<Task>) => {
         state.loading = false;
-        const index = state.tasks.findIndex(task => task.id === action.payload.id);
+        const index = state.tasks.findIndex((task) => task.id === action.payload.id);
         if (index !== -1) {
           state.tasks[index] = action.payload;
         }
-        state.error = null;
       })
       .addCase(updateTask.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
 
-    // Delete task
-    builder
+      // Delete task
       .addCase(deleteTask.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(deleteTask.fulfilled, (state, action) => {
+      .addCase(deleteTask.fulfilled, (state, action: PayloadAction<string>) => {
         state.loading = false;
-        state.tasks = state.tasks.filter(task => task.id !== action.payload);
-        state.error = null;
+        state.tasks = state.tasks.filter((task) => task.id !== action.payload);
       })
       .addCase(deleteTask.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
 
-    // Toggle task completion
-    builder
+      // Toggle task completion
       .addCase(toggleTaskCompletion.pending, (state) => {
+        // No loading state change for faster UI feedback
         state.error = null;
       })
-      .addCase(toggleTaskCompletion.fulfilled, (state, action) => {
-        const index = state.tasks.findIndex(task => task.id === action.payload.id);
+      .addCase(toggleTaskCompletion.fulfilled, (state, action: PayloadAction<Task>) => {
+        const index = state.tasks.findIndex((task) => task.id === action.payload.id);
         if (index !== -1) {
           state.tasks[index] = action.payload;
         }
-        state.error = null;
       })
       .addCase(toggleTaskCompletion.rejected, (state, action) => {
         state.error = action.payload as string;
       });
-  }
+  },
 });
 
 export const {
