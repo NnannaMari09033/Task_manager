@@ -21,7 +21,7 @@ import { formatDueDate, isTaskOverdue } from '../utils/taskUtils';
 
 interface TaskCardProps {
   task: Task;
-  onToggleComplete: (id: string) => void;
+  onToggleComplete: (task: Task) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
 }
@@ -153,7 +153,7 @@ const TaskCard: React.FC<TaskCardProps> = React.memo(({
         <Stack direction="row" alignItems="flex-start" spacing={2}>
           <StyledCheckbox
             checked={task.completed}
-            onChange={() => onToggleComplete(task.id)}
+            onChange={() => onToggleComplete(task)}
             icon={<RadioButtonUncheckedIcon />}
             checkedIcon={<CheckCircleOutlineIcon />}
             sx={{ 

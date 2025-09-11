@@ -1,7 +1,7 @@
 {
   "name": "task-management-app",
   "version": "1.0.0",
-  "description": "Modern Task Management App with a Supabase Backend",
+  "description": "Modern Task Management App with Local Storage Persistence",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,7 +17,6 @@
     "@mui/material": "^6.5.0",
     "@mui/x-date-pickers": "^7.7.1",
     "@reduxjs/toolkit": "^2.0.1",
-    "@supabase/supabase-js": "^2.43.4",
     "date-fns": "^3.0.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

@@ -1,86 +1,86 @@
-import { supabase } from './supabaseClient';
 import { Task, TaskFormData } from '../types/task.types';
 import { UI_MESSAGES } from '../config/constants';
 
 class TaskService {
-  private readonly TABLE_NAME = 'tasks';
+  private readonly STORAGE_KEY = 'tasks';
+
+  private getTasksFromStorage(): Task[] {
+    try {
+      const tasksJson = localStorage.getItem(this.STORAGE_KEY);
+      return tasksJson ? JSON.parse(tasksJson) : [];
+    } catch (error) {
+      console.error('Failed to retrieve tasks from localStorage:', error);
+      return [];
+    }
+  }
+
+  private saveTasksToStorage(tasks: Task[]): void {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(tasks));
+    } catch (error) {
+      console.error('Failed to save tasks to localStorage:', error);
+    }
+  }
 
   async getAllTasks(): Promise<Task[]> {
-    const { data, error } = await supabase
-      .from(this.TABLE_NAME)
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Failed to fetch tasks:', error);
-      throw new Error(UI_MESSAGES.ERROR.NETWORK_ERROR);
-    }
-
-    return data || [];
+    const tasks = this.getTasksFromStorage();
+    return Promise.resolve(tasks);
   }
 
   async createTask(taskData: TaskFormData): Promise<Task> {
-    const { data, error } = await supabase
-      .from(this.TABLE_NAME)
-      .insert([taskData])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Failed to create task:', error);
-      throw new Error(UI_MESSAGES.ERROR.SERVER_ERROR);
-    }
-
-    return data;
+    const tasks = this.getTasksFromStorage();
+    const newTask: Task = {
+      id: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+      completed: false,
+      ...taskData,
+    };
+    const updatedTasks = [...tasks, newTask];
+    this.saveTasksToStorage(updatedTasks);
+    return Promise.resolve(newTask);
   }
 
-  async updateTask(taskId: string, updates: Partial<Task>): Promise<Task> {
-    const { data, error } = await supabase
-      .from(this.TABLE_NAME)
-      .update(updates)
-      .eq('id', taskId)
-      .select()
-      .single();
+  async updateTask(taskId: string, updates: Partial<TaskFormData>): Promise<Task> {
+    const tasks = this.getTasksFromStorage();
+    const taskIndex = tasks.findIndex((task) => task.id === taskId);
 
-    if (error) {
-      console.error('Failed to update task:', error);
-      if (error.code === 'PGRST116') { // PostgREST error for "Not a single row was returned"
-        throw new Error(UI_MESSAGES.ERROR.TASK_NOT_FOUND);
-      }
-      throw new Error(UI_MESSAGES.ERROR.SERVER_ERROR);
+    if (taskIndex === -1) {
+      return Promise.reject(new Error(UI_MESSAGES.ERROR.TASK_NOT_FOUND));
     }
 
-    return data;
+    const updatedTask = { ...tasks[taskIndex], ...updates };
+    tasks[taskIndex] = updatedTask;
+    this.saveTasksToStorage(tasks);
+
+    return Promise.resolve(updatedTask);
   }
 
-  async deleteTask(taskId: string): Promise<void> {
-    const { error } = await supabase
-      .from(this.TABLE_NAME)
-      .delete()
-      .eq('id', taskId);
+  async deleteTask(taskId: string): Promise<string> {
+    let tasks = this.getTasksFromStorage();
+    const initialLength = tasks.length;
+    tasks = tasks.filter((task) => task.id !== taskId);
 
-    if (error) {
-      console.error('Failed to delete task:', error);
-      throw new Error(UI_MESSAGES.ERROR.SERVER_ERROR);
+    if (tasks.length === initialLength) {
+      return Promise.reject(new Error(UI_MESSAGES.ERROR.TASK_NOT_FOUND));
     }
+
+    this.saveTasksToStorage(tasks);
+    return Promise.resolve(taskId);
   }
 
-  async toggleTaskCompletion(taskId: string, currentStatus: boolean): Promise<Task> {
-    const { data, error } = await supabase
-      .from(this.TABLE_NAME)
-      .update({ completed: !currentStatus })
-      .eq('id', taskId)
-      .select()
-      .single();
+  async toggleTaskCompletion(taskId: string): Promise<Task> {
+    const tasks = this.getTasksFromStorage();
+    const taskIndex = tasks.findIndex((task) => task.id === taskId);
 
-    if (error) {
-      console.error('Failed to toggle task completion:', error);
-      if (error.code === 'PGRST116') {
-        throw new Error(UI_MESSAGES.ERROR.TASK_NOT_FOUND);
-      }
-      throw new Error(UI_MESSAGES.ERROR.SERVER_ERROR);
+    if (taskIndex === -1) {
+      return Promise.reject(new Error(UI_MESSAGES.ERROR.TASK_NOT_FOUND));
     }
-    return data;
+
+    const updatedTask = { ...tasks[taskIndex], completed: !tasks[taskIndex].completed };
+    tasks[taskIndex] = updatedTask;
+    this.saveTasksToStorage(tasks);
+
+    return Promise.resolve(updatedTask);
   }
 }
 
