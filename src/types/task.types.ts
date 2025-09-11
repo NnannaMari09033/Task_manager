@@ -6,13 +6,13 @@ export type TaskPriority = typeof PRIORITY_LEVELS[keyof typeof PRIORITY_LEVELS];
 // Filter Type
 export type FilterType = typeof FILTER_TYPES[keyof typeof FILTER_TYPES];
 
-// Task Interface (matches the Supabase table schema)
+// Task Interface
 export interface Task {
   id: string;
-  created_at: string;
+  createdAt: string;
   title: string;
   description: string | null;
-  due_date: string | null;
+  dueDate: string | null;
   priority: TaskPriority;
   completed: boolean;
 }
@@ -21,7 +21,7 @@ export interface Task {
 export interface TaskFormData {
   title: string;
   description: string;
-  due_date: string | null;
+  dueDate: string | null;
   priority: TaskPriority;
 }
 

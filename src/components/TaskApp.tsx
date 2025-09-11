@@ -125,9 +125,9 @@ const TaskAppContent: React.FC = () => {
     }
   }, [dispatch]);
 
-  const handleToggleComplete = React.useCallback(async (task: Task) => {
+  const handleToggleComplete = React.useCallback(async (id: string) => {
     try {
-      await dispatch(toggleTaskCompletion({ id: task.id, completed: task.completed }) as any).unwrap();
+      await dispatch(toggleTaskCompletion(id) as any).unwrap();
     } catch (error) {
       console.error('Toggle completion error:', error);
     }
